@@ -1,22 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
+  TouchableOpacity,
+  SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Feather';
 
-const App: React.FC = () => {
+// NOTE: The placeholder modals from the previous step would go here.
+
+const DetectScreen: React.FC = () => {
+  const [showInputSelector, setShowInputSelector] = useState(false);
+  const [showRecordingGuide, setShowRecordingGuide] = useState(false);
+
   return (
-    // The LinearGradient component acts as the main background container
+    // Use LinearGradient as the main background container
     <LinearGradient
       colors={['#EAF6FF', '#D3E9F8', '#CADDFA']}
       style={styles.gradient}>
       <SafeAreaView style={styles.safeArea}>
-        {/* --- Custom Header Section --- */}
+        {/* --- Custom Header --- */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Icon name="zap" size={20} color="#007AFF" />
@@ -28,12 +33,11 @@ const App: React.FC = () => {
         </View>
         <Text style={styles.title}>Detect</Text>
 
-        {/* --- Main Content Section (Vertically Centered) --- */}
+        {/* --- Main Centered Content --- */}
         <View style={styles.content}>
           <TouchableOpacity
             style={styles.mainButton}
-            // Add onPress functionality here later
-          >
+            onPress={() => setShowInputSelector(true)}>
             <Icon name="arrow-up" size={50} color="rgba(0,0,0,0.5)" />
           </TouchableOpacity>
 
@@ -41,13 +45,13 @@ const App: React.FC = () => {
 
           <TouchableOpacity
             style={styles.guideButton}
-            // Add onPress functionality here later
-          >
+            onPress={() => setShowRecordingGuide(true)}>
             <Icon name="help-circle" size={16} color="#007AFF" />
             <Text style={styles.guideButtonText}>How to Record</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      {/* Your Modals for input selection and the guide would be here */}
     </LinearGradient>
   );
 };
@@ -75,26 +79,24 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     marginLeft: 6,
-    color: '#000',
   },
   title: {
     fontSize: 34,
     fontWeight: 'bold',
     marginTop: 4,
-    color: '#000',
   },
   // Main content styles
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 60, // Offset to account for header height
+    paddingBottom: 60, // Offset to balance the header's height
   },
   mainButton: {
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)', // Lighter, translucent button
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -103,7 +105,7 @@ const styles = StyleSheet.create({
   promptText: {
     marginTop: 24,
     fontSize: 17,
-    color: '#3C3C43',
+    color: '#3C3C43', // Darker text color
   },
   guideButton: {
     flexDirection: 'row',
@@ -111,15 +113,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: '#E9E9EB',
+    backgroundColor: '#E9E9EB', // Pill background color
     borderRadius: 20,
   },
   guideButtonText: {
-    color: '#007AFF',
+    color: '#007AFF', // Blue text color
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '600',
   },
 });
 
-export default App;
+export default DetectScreen;
