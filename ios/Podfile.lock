@@ -2336,6 +2336,8 @@ PODS:
     - SocketRocket
     - Yoga
   - SocketRocket (0.7.1)
+  - SRSRadialGradient (1.2.1):
+    - React
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2418,6 +2420,7 @@ DEPENDENCIES:
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
   - SocketRocket (~> 0.7.1)
+  - SRSRadialGradient (from `../node_modules/react-native-radial-gradient`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2580,6 +2583,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNVectorIcons:
     :path: "../node_modules/react-native-vector-icons"
+  SRSRadialGradient:
+    :path: "../node_modules/react-native-radial-gradient"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2662,8 +2667,9 @@ SPEC CHECKSUMS:
   RNScreens: 75074e642b69b086813a943bdf63da7085fb2166
   RNVectorIcons: 54df27a2e90ddeb674c7237d76060ec9762d0bc5
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  SRSRadialGradient: db3a6ea7d867854c9f4c3b0c5b3167332a65f8d8
   Yoga: a742cc68e8366fcfc681808162492bc0aa7a9498
 
-PODFILE CHECKSUM: 6103e6d9617cb022a6bdb3e1a0aa15303301fe19
+PODFILE CHECKSUM: b77958937a5b47351c3c9a155d26fe3b8bb33082
 
 COCOAPODS: 1.16.2
