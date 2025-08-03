@@ -8,26 +8,69 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Image,
-  ImageBackground, // Using ImageBackground for the aurora effect
-  Platform, // ADDED: To detect the operating system
-  StatusBar, // ADDED: To get the height of the Android status bar
+  ImageBackground,
+  Platform,
+  StatusBar,
+  Modal,
+  Alert,
 } from 'react-native';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+
 import AppIcon from '../components/AppIcon';
 import GlassPanel from '../components/GlassPanel';
 
-const DetectScreen: React.FC = () => {
-  const [showInputSelector, setShowInputSelector] = useState(false);
-  const [showRecordingGuide, setShowRecordingGuide] = useState(false);
+// Import the placeholder screens
+import TrimmingScreen from './TrimmingScreen';
+import CalibrationScreen from './CalibrationScreen';
+import ReviewScreen from './ReviewScreen';
+import ResultsScreen from './ResultsScreen';
 
-  return (
-    // Using ImageBackground with the correct path to the asset in the root assets folder
+// Define the different states of the application flow
+type AppState = 'IDLE' | 'TRIMMING' | 'CALIBRATING' | 'REVIEWING' | 'RESULTS';
+
+const DetectScreen: React.FC = () => {
+  const [appState, setAppState] = useState<AppState>('IDLE');
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [calibrationData, setCalibrationData] = useState<any>(null);
+  const [reviewResults, setReviewResults] = useState<any>(null);
+
+  const [showInputSelector, setShowInputSelector] = useState(false);
+
+  const handleResponse = (response: any) => {
+    if (response.didCancel) {
+      console.log('User cancelled video picker');
+    } else if (response.errorCode) {
+      Alert.alert('Error', response.errorMessage);
+    } else if (response.assets && response.assets[0].uri) {
+      setVideoUri(response.assets[0].uri);
+      setAppState('TRIMMING');
+    }
+    setShowInputSelector(false);
+  };
+
+  const handleRecordVideo = () => {
+    launchCamera({ mediaType: 'video' }, handleResponse);
+  };
+
+  const handleChooseVideo = () => {
+    launchImageLibrary({ mediaType: 'video' }, handleResponse);
+  };
+
+  const resetFlow = () => {
+    setAppState('IDLE');
+    setVideoUri(null);
+    setCalibrationData(null);
+    setReviewResults(null);
+  };
+
+  // This function renders the main UI for the IDLE state
+  const renderIdleView = () => (
     <ImageBackground
       style={styles.container}
       source={require('../../assets/aurora_background.png')}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            {/* Using the correct path for the header asset */}
             <Image
               source={require('../../assets/AppLabel.png')}
               style={styles.headerImage}
@@ -35,7 +78,6 @@ const DetectScreen: React.FC = () => {
             <Text style={styles.title}>Detect</Text>
           </View>
           <TouchableOpacity>
-            {/* Icon size decreased */}
             <AppIcon name="info.circle" fallbackName="info" size={22} color="#007AFF" />
           </TouchableOpacity>
         </View>
@@ -53,22 +95,55 @@ const DetectScreen: React.FC = () => {
             </GlassPanel>
           </TouchableOpacity>
           <Text style={styles.promptText}>Select a video to begin</Text>
-          <TouchableOpacity
-            style={styles.guideButton}
-            onPress={() => setShowRecordingGuide(true)}>
+          <TouchableOpacity style={styles.guideButton}>
             <AppIcon name="questionmark.circle" fallbackName="help-circle" size={16} color="#007AFF" />
             <Text style={styles.guideButtonText}>How to Record</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showInputSelector}
+        onRequestClose={() => setShowInputSelector(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Analyze a Smash</Text>
+            <TouchableOpacity style={styles.modalButton} onPress={handleRecordVideo}>
+              <Text style={styles.modalButtonText}>Record New Video</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.modalButton} onPress={handleChooseVideo}>
+              <Text style={styles.modalButtonText}>Choose from Library</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={() => setShowInputSelector(false)}>
+              <Text style={[styles.modalButtonText, styles.cancelButtonText]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
+
+  // This switch statement controls which view is currently displayed
+  switch (appState) {
+    case 'TRIMMING':
+      return <TrimmingScreen videoUri={videoUri!} onComplete={(trimmedUri) => { setVideoUri(trimmedUri); setAppState('CALIBRATING'); }} onCancel={resetFlow} />;
+    case 'CALIBRATING':
+      return <CalibrationScreen videoUri={videoUri!} onComplete={(data) => { setCalibrationData(data); setAppState('REVIEWING'); }} onCancel={resetFlow} />;
+    case 'REVIEWING':
+      return <ReviewScreen calibrationData={calibrationData} onComplete={(results) => { setReviewResults(results); setAppState('RESULTS'); }} onCancel={resetFlow} />;
+    case 'RESULTS':
+      return <ResultsScreen results={reviewResults} onReset={resetFlow} />;
+    case 'IDLE':
+    default:
+      return renderIdleView();
+  }
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7', // Fallback color in case image fails to load
+    backgroundColor: '#F2F2F7',
   },
   safeArea: {
     flex: 1,
@@ -76,7 +151,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    // CHANGED: Aligned items to the center to fix vertical alignment.
     alignItems: 'center',
     paddingHorizontal: 25,
     marginTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
@@ -84,7 +158,6 @@ const styles = StyleSheet.create({
   headerLeft: {
     alignItems: 'flex-start',
   },
-  // Logo size increased
   headerImage: {
     width: 150,
     height: 35,
@@ -135,6 +208,43 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  modalButton: {
+    width: '100%',
+    padding: 15,
+    borderRadius: 10,
+    backgroundColor: '#007AFF',
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#E5E5EA',
+  },
+  cancelButtonText: {
+    color: '#007AFF',
   },
 });
 
