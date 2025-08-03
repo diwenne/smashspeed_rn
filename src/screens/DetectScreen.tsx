@@ -9,6 +9,8 @@ import {
   SafeAreaView,
   Image,
   ImageBackground, // Using ImageBackground for the aurora effect
+  Platform, // ADDED: To detect the operating system
+  StatusBar, // ADDED: To get the height of the Android status bar
 } from 'react-native';
 import AppIcon from '../components/AppIcon';
 import GlassPanel from '../components/GlassPanel';
@@ -75,9 +77,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    // Padding increased for more space from the edge
     paddingHorizontal: 25,
-    marginTop: 10,
+    // CHANGED: Added platform-specific top margin to avoid the Android status bar
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 10,
   },
   headerLeft: {
     alignItems: 'flex-start',
