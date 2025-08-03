@@ -76,10 +76,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    // CHANGED: Aligned items to the center to fix vertical alignment.
+    alignItems: 'center',
     paddingHorizontal: 25,
-    // CHANGED: Added platform-specific top margin to avoid the Android status bar
-    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 10,
+    marginTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
   },
   headerLeft: {
     alignItems: 'flex-start',
