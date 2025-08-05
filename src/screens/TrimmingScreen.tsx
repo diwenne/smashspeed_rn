@@ -11,10 +11,13 @@ import {
   Alert,
   Platform,
   NativeModules,
+  TouchableOpacity,
 } from 'react-native';
-import Video, {VideoRef} from 'react-native-video';
+import Video, {VideoRef, OnProgressData} from 'react-native-video';
 import {Slider} from '@miblanchard/react-native-slider';
 import GlassPanel from '../components/GlassPanel';
+// Note: For icons, you might need to install react-native-vector-icons
+// import Icon from 'react-native-vector-icons/Ionicons';
 
 // Define the interface for our new native module
 interface VideoTrimmerInterface {
@@ -42,7 +45,9 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
   const [range, setRange] = useState([0, 0]);
-  const [isSliding, setIsSliding] = useState(false); // State to track slider interaction
+  const [isSliding, setIsSliding] = useState(false); // State to track trim slider interaction
+  const [paused, setPaused] = useState(true); // State for play/pause
+  const [progress, setProgress] = useState(0); // State for video progress
   const playerRef = useRef<VideoRef>(null);
 
   useEffect(() => {
@@ -55,7 +60,7 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
     setVideoDuration(meta.duration);
   };
 
-  // This function now handles scrubbing precisely
+  // Handles scrubbing the trim range slider
   const handleRangeChange = (newRange: number[]) => {
     const [oldStartTime, oldEndTime] = range;
     const [newStartTime, newEndTime] = newRange;
@@ -63,14 +68,25 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
     setRange(newRange);
 
     if (playerRef.current) {
-      // If the start handle is being moved, seek to the new start time
       if (newStartTime !== oldStartTime) {
         playerRef.current.seek(newStartTime);
-      }
-      // If the end handle is being moved, seek to the new end time
-      else if (newEndTime !== oldEndTime) {
+      } else if (newEndTime !== oldEndTime) {
         playerRef.current.seek(newEndTime);
       }
+    }
+  };
+
+  // Handles scrubbing the main progress slider
+  const handleProgressScrub = (value: number[]) => {
+    if (playerRef.current) {
+      playerRef.current.seek(value[0]);
+    }
+  };
+
+  // Updates the progress bar as the video plays
+  const handleProgressUpdate = (data: OnProgressData) => {
+    if (!isSliding) {
+      setProgress(data.currentTime);
     }
   };
 
@@ -96,7 +112,6 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
     }
   };
 
-  // This function now calls our native module
   const trimVideoWithNativeModule = async () => {
     setIsExporting(true);
     try {
@@ -136,8 +151,7 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
         <Text style={styles.title}>Trim to the Smash</Text>
         <Text style={styles.description}>
           Isolate the moment of impact. The final clip should be very short
-          (~0.25 seconds), and the birdie should be clearly visible in each
-          frame.
+          (~0.25 seconds).
         </Text>
 
         <Video
@@ -145,17 +159,37 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
           source={{uri: videoUri}}
           style={styles.videoPlayer}
           onLoad={handleVideoLoad}
+          onProgress={handleProgressUpdate}
           resizeMode="contain"
           repeat={false}
-          paused={isSliding} // Pause the video while the user is dragging the slider
+          paused={paused}
         />
 
+        {/* Playback Controls */}
+        <View style={styles.playbackControls}>
+          <TouchableOpacity onPress={() => setPaused(!paused)} style={styles.playButton}>
+            <Text style={styles.playButtonText}>{paused ? 'Play' : 'Pause'}</Text>
+          </TouchableOpacity>
+          <Slider
+            containerStyle={styles.progressSlider}
+            value={[progress]}
+            onValueChange={handleProgressScrub}
+            minimumValue={0}
+            maximumValue={videoDuration}
+            step={0.01}
+            thumbTintColor="#FFFFFF"
+            minimumTrackTintColor="#FFFFFF"
+            maximumTrackTintColor="rgba(255, 255, 255, 0.5)"
+          />
+        </View>
+
+        {/* Trimming Controls */}
         <View style={styles.sliderContainer}>
           <Slider
             value={range}
             onValueChange={handleRangeChange}
-            onSlidingStart={() => setIsSliding(true)} // Set sliding state to true
-            onSlidingComplete={() => setIsSliding(false)} // Set sliding state to false
+            onSlidingStart={() => setIsSliding(true)}
+            onSlidingComplete={() => setIsSliding(false)}
             minimumValue={0}
             maximumValue={videoDuration}
             step={0.01}
@@ -230,7 +264,26 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 12,
     backgroundColor: 'black',
+  },
+  playbackControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    marginTop: 10,
     marginBottom: 20,
+  },
+  playButton: {
+    padding: 10,
+  },
+  playButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  progressSlider: {
+    flex: 1,
+    marginLeft: 10,
   },
   sliderContainer: {
     width: '100%',
