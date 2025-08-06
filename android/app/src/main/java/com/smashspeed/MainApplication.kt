@@ -9,6 +9,8 @@ import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
+import com.brentvatne.react.ReactVideoPackage // Import for react-native-video
+import com.smashspeed.VideoTrimmerPackage // Import for your custom trimmer module
 
 class MainApplication : Application(), ReactApplication {
 
@@ -18,6 +20,8 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Packages that cannot be autolinked yet can be added manually here, for example:
               // add(MyReactNativePackage())
+              add(VideoTrimmerPackage()) // Add your custom package
+              add(ReactVideoPackage())   // Manually add the video package too, just in case
             }
 
         override fun getJSMainModuleName(): String = "index"

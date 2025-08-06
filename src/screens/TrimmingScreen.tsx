@@ -5,19 +5,16 @@ import {
   View,
   Text,
   StyleSheet,
-  Button,
   SafeAreaView,
   ActivityIndicator,
   Alert,
   Platform,
   NativeModules,
-  TouchableOpacity,
+  TouchableOpacity, // <-- Import TouchableOpacity
 } from 'react-native';
-import Video, {VideoRef, OnProgressData} from 'react-native-video';
+import Video, {VideoRef, OnLoadData, OnProgressData} from 'react-native-video';
 import {Slider} from '@miblanchard/react-native-slider';
 import GlassPanel from '../components/GlassPanel';
-// Note: For icons, you might need to install react-native-vector-icons
-// import Icon from 'react-native-vector-icons/Ionicons';
 
 // Define the interface for our new native module
 interface VideoTrimmerInterface {
@@ -45,10 +42,19 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [videoDuration, setVideoDuration] = useState(0);
   const [range, setRange] = useState([0, 0]);
-  const [isSliding, setIsSliding] = useState(false); // State to track trim slider interaction
-  const [paused, setPaused] = useState(true); // State for play/pause
-  const [progress, setProgress] = useState(0); // State for video progress
+  const [isSliding, setIsSliding] = useState(false);
+  const [paused, setPaused] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [videoLoaded, setVideoLoaded] = useState(false);
   const playerRef = useRef<VideoRef>(null);
+
+  const handleVideoLoad = (meta: OnLoadData) => {
+    console.log('Video metadata loaded:', meta);
+    if (meta.duration > 0) {
+      setVideoDuration(meta.duration);
+      setVideoLoaded(true);
+    }
+  };
 
   useEffect(() => {
     if (videoDuration > 0) {
@@ -56,17 +62,24 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
     }
   }, [videoDuration]);
 
-  const handleVideoLoad = (meta: any) => {
-    setVideoDuration(meta.duration);
+  const handleVideoError = (error: any) => {
+    console.error('Video Component Error:', error);
+    Alert.alert(
+      'Video Error',
+      'An error occurred while trying to load the video. The file may be unsupported.',
+      [{text: 'OK', onPress: onCancel}],
+    );
   };
 
-  // Handles scrubbing the trim range slider
+  const handleOnEnd = () => {
+    setPaused(true);
+    playerRef.current?.seek(0);
+  };
+
   const handleRangeChange = (newRange: number[]) => {
     const [oldStartTime, oldEndTime] = range;
     const [newStartTime, newEndTime] = newRange;
-
     setRange(newRange);
-
     if (playerRef.current) {
       if (newStartTime !== oldStartTime) {
         playerRef.current.seek(newStartTime);
@@ -76,14 +89,12 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
     }
   };
 
-  // Handles scrubbing the main progress slider
   const handleProgressScrub = (value: number[]) => {
     if (playerRef.current) {
       playerRef.current.seek(value[0]);
     }
   };
 
-  // Updates the progress bar as the video plays
   const handleProgressUpdate = (data: OnProgressData) => {
     if (!isSliding) {
       setProgress(data.currentTime);
@@ -93,12 +104,10 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
   const validateAndProceed = () => {
     const selectedDuration = range[1] - range[0];
     const maxDurationAllowed = 0.8;
-
     if (selectedDuration <= 0) {
       Alert.alert('Invalid Range', 'The end time must be after the start time.');
       return;
     }
-
     if (selectedDuration > maxDurationAllowed) {
       Alert.alert(
         'Clip Too Long',
@@ -115,12 +124,7 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
   const trimVideoWithNativeModule = async () => {
     setIsExporting(true);
     try {
-      const outputUri = await VideoTrimmer.trim(
-        videoUri,
-        range[0],
-        range[1],
-      );
-      console.log('Native trim completed successfully:', outputUri);
+      const outputUri = await VideoTrimmer.trim(videoUri, range[0], range[1]);
       onComplete(outputUri);
     } catch (error: any) {
       console.error('An error occurred during native video trimming:', error);
@@ -145,6 +149,8 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
     );
   }
 
+  const isConfirmDisabled = !videoLoaded || range[1] <= range[0];
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -160,14 +166,18 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
           style={styles.videoPlayer}
           onLoad={handleVideoLoad}
           onProgress={handleProgressUpdate}
+          onError={handleVideoError}
+          onEnd={handleOnEnd}
           resizeMode="contain"
           repeat={false}
           paused={paused}
+          useTextureView={true} // FIX #1: Improves video playback stability on Android
         />
 
-        {/* Playback Controls */}
         <View style={styles.playbackControls}>
-          <TouchableOpacity onPress={() => setPaused(!paused)} style={styles.playButton}>
+          <TouchableOpacity
+            onPress={() => setPaused(!paused)}
+            style={styles.playButton}>
             <Text style={styles.playButtonText}>{paused ? 'Play' : 'Pause'}</Text>
           </TouchableOpacity>
           <Slider
@@ -175,7 +185,7 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
             value={[progress]}
             onValueChange={handleProgressScrub}
             minimumValue={0}
-            maximumValue={videoDuration}
+            maximumValue={videoDuration || 1}
             step={0.01}
             thumbTintColor="#FFFFFF"
             minimumTrackTintColor="#FFFFFF"
@@ -183,7 +193,6 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
           />
         </View>
 
-        {/* Trimming Controls */}
         <View style={styles.sliderContainer}>
           <Slider
             value={range}
@@ -191,7 +200,7 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
             onSlidingStart={() => setIsSliding(true)}
             onSlidingComplete={() => setIsSliding(false)}
             minimumValue={0}
-            maximumValue={videoDuration}
+            maximumValue={videoDuration || 1}
             step={0.01}
             thumbTintColor="#FFFFFF"
             minimumTrackTintColor="#007AFF"
@@ -207,13 +216,21 @@ const TrimmingScreen: React.FC<TrimmingScreenProps> = ({
           </View>
         </View>
 
+        {/* FIX #2: Replaced Button with styled TouchableOpacity for reliability */}
         <View style={styles.buttonContainer}>
-          <Button title="Cancel" onPress={onCancel} color="#007AFF" />
-          <Button
-            title="Confirm Trim"
+          <TouchableOpacity onPress={onCancel} style={styles.button}>
+            <Text style={styles.buttonTextCancel}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={validateAndProceed}
-            disabled={videoDuration === 0 || range[1] <= range[0]}
-          />
+            style={[
+              styles.button,
+              styles.confirmButton,
+              isConfirmDisabled && styles.disabledButton,
+            ]}
+            disabled={isConfirmDisabled}>
+            <Text style={styles.buttonTextConfirm}>Confirm Trim</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -313,6 +330,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginTop: 'auto',
     paddingVertical: 10,
+  },
+  // New styles for TouchableOpacity buttons
+  button: {
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButton: {
+    backgroundColor: '#007AFF',
+  },
+  disabledButton: {
+    backgroundColor: '#A9A9A9',
+  },
+  buttonTextCancel: {
+    color: '#007AFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  buttonTextConfirm: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });
 
